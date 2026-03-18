@@ -1,0 +1,96 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ================================================
+    //  FUNÇÕES AUXILIARES
+    // ================================================
+
+    // Usuário está autenticado?
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // O familyId do documento pertence ao usuário logado?
+    function ownFamily() {
+      return isAuth()
+          && resource.data.familyId == request.auth.uid;
+    }
+
+    // O familyId que está sendo gravado pertence ao usuário logado?
+    function writingOwnFamily() {
+      return isAuth()
+          && request.resource.data.familyId == request.auth.uid;
+    }
+
+    // ================================================
+    //  PERFIL DO USUÁRIO (users_profile)
+    //  Apenas o próprio dono pode ler e escrever.
+    // ================================================
+    match /users_profile/{userId} {
+      allow read, write: if isAuth()
+                         && request.auth.uid == userId;
+    }
+
+    // ================================================
+    //  LANÇAMENTOS (despesas)
+    //  Lê e escreve apenas se familyId == auth.uid
+    // ================================================
+    match /lancamentos/{docId} {
+      allow read:   if ownFamily();
+      allow create: if writingOwnFamily();
+      allow update: if ownFamily() && writingOwnFamily();
+      allow delete: if ownFamily();
+    }
+
+    // ================================================
+    //  RECEITAS
+    // ================================================
+    match /receitas/{docId} {
+      allow read:   if ownFamily();
+      allow create: if writingOwnFamily();
+      allow update: if ownFamily() && writingOwnFamily();
+      allow delete: if ownFamily();
+    }
+
+    // ================================================
+    //  CARTÕES
+    // ================================================
+    match /cartoes/{docId} {
+      allow read:   if ownFamily();
+      allow create: if writingOwnFamily();
+      allow update: if ownFamily() && writingOwnFamily();
+      allow delete: if ownFamily();
+    }
+
+    // ================================================
+    //  CONTAS BANCÁRIAS
+    // ================================================
+    match /contas/{docId} {
+      allow read:   if ownFamily();
+      allow create: if writingOwnFamily();
+      allow update: if ownFamily() && writingOwnFamily();
+      allow delete: if ownFamily();
+    }
+
+    // ================================================
+    //  CATEGORIAS
+    // ================================================
+    match /categorias/{docId} {
+      allow read:   if ownFamily();
+      allow create: if writingOwnFamily();
+      allow update: if ownFamily() && writingOwnFamily();
+      allow delete: if ownFamily();
+    }
+
+    // ================================================
+    //  BLOQUEIO TOTAL — qualquer outra coleção
+    //  não listada acima é negada por padrão.
+    // ================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+  }
+}
