@@ -6,6 +6,7 @@
 import { $, fmt, fmtDate, showToast } from './utils.js';
 import { state, fbAdd, fbDelete } from './firebase.js';
 import { openModal, closeModal, badgeStatus, populateMesFiltro } from './ui.js';
+import { exportXLSX } from './despesas.js';
 
 // ── Renderização ──────────────────────────────────────────────
 export function renderReceitas() {
@@ -84,7 +85,7 @@ export async function salvarReceita() {
     const fim    = $('rec-fim')?.value;
     if (!inicio || !fim) return showToast('Informe início e fim da recorrência.', 'err');
     const [yI, mI] = inicio.split('-').map(Number);
-    const [yF, mF] = fim.split('-').map(Number);
+    const [yF] = fim.split('-').map(Number);
     const dia       = new Date(data).getDate();
     const promises  = [];
     for (let y = yI, m = mI; y < yF || (y === yF && m <= mF); ) {
@@ -121,10 +122,7 @@ export function initReceitas() {
   });
 
   // Exportar
-  $('btn-export-rec')?.addEventListener('click', () => {
-    // reutiliza exportXLSX de despesas via importação dinâmica ou window
-    window.exportXLSX?.('receitas', 'Receitas_Clarim');
-  });
+  $('btn-export-rec')?.addEventListener('click', () => exportXLSX('receitas', 'Receitas_Clarim'));
 
   // Filtros
   ['rec-search','rec-mes','rec-status-f'].forEach(id => {
