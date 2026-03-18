@@ -1,0 +1,207 @@
+// ============================================================
+// CLARIM — firebase.js
+// Configuração Firebase, estado global, CRUD e autenticação
+// ============================================================
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+  sendEmailVerification,
+  browserLocalPersistence,
+  setPersistence
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  where,
+  doc,
+  setDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+import { showToast, setAuthError } from './utils.js';
+
+// ── Configuração ─────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDrVIFXcwXDiXXOutUPPECpytky6QEaK30",
+  authDomain: "clarim-3cbed.firebaseapp.com",
+  projectId: "clarim-3cbed",
+  storageBucket: "clarim-3cbed.firebasestorage.app",
+  messagingSenderId: "122672980843",
+  appId: "1:122672980843:web:a4bcbb9625fbce2070e22e",
+  measurementId: "G-EKKNN0JJVE"
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db   = getFirestore(app);
+
+// ── Estado Global ────────────────────────────────────────────
+// Objeto mutável compartilhado entre todos os módulos
+export const state = {
+  currentUser:     null,
+  userFamilyId:    null,
+  allLancamentos:  [],
+  allReceitas:     [],
+  allCartoes:      [],
+  allContas:       [],
+  allCategorias:   [],
+  currentMonth:    new Date().getMonth(),   // 0-11
+  currentYear:     new Date().getFullYear(),
+  activeListeners: [],
+};
+
+// ── CRUD ─────────────────────────────────────────────────────
+export async function fbAdd(colName, data) {
+  if (!state.userFamilyId) return null;
+  try {
+    const ref = await addDoc(collection(db, colName), {
+      ...data,
+      familyId:  state.userFamilyId,
+      updatedAt: serverTimestamp()
+    });
+    return ref.id;
+  } catch (e) {
+    console.error('Erro ao salvar:', e);
+    showToast('Erro ao salvar. Verifique o console.', 'err');
+    return null;
+  }
+}
+
+export async function fbUpdate(colName, docId, data) {
+  if (!state.userFamilyId) return;
+  try {
+    await updateDoc(doc(db, colName, docId), {
+      ...data,
+      familyId:  state.userFamilyId,
+      updatedAt: serverTimestamp()
+    });
+  } catch (e) {
+    console.error('Erro ao atualizar:', e);
+    showToast('Erro ao atualizar.', 'err');
+  }
+}
+
+export async function fbDelete(colName, docId) {
+  if (!state.userFamilyId) return;
+  try {
+    await deleteDoc(doc(db, colName, docId));
+  } catch (e) {
+    console.error('Erro ao deletar:', e);
+    showToast('Erro ao deletar.', 'err');
+  }
+}
+
+// ── Carregamento de Dados (onSnapshot) ───────────────────────
+// Após cada atualização, dispara um CustomEvent para o app.js
+export function loadAllData() {
+  if (!state.userFamilyId) return;
+
+  const cols = [
+    { name: 'lancamentos', key: 'allLancamentos', event: 'clarim:lancamentos' },
+    { name: 'receitas',    key: 'allReceitas',    event: 'clarim:receitas'    },
+    { name: 'cartoes',     key: 'allCartoes',     event: 'clarim:cartoes'     },
+    { name: 'contas',      key: 'allContas',      event: 'clarim:contas'      },
+    { name: 'categorias',  key: 'allCategorias',  event: 'clarim:categorias'  },
+  ];
+
+  cols.forEach(({ name, key, event }) => {
+    const q = query(
+      collection(db, name),
+      where('familyId', '==', state.userFamilyId)
+    );
+    const unsub = onSnapshot(q, snap => {
+      state[key] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      document.dispatchEvent(new CustomEvent(event));
+    }, err => console.error(`Erro ao carregar ${name}:`, err));
+    state.activeListeners.push(unsub);
+  });
+}
+
+// ── Autenticação ─────────────────────────────────────────────
+export function setupAuth(onLogin, onLogout) {
+  setPersistence(auth, browserLocalPersistence).then(() => {
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        state.currentUser  = user;
+        state.userFamilyId = user.uid;
+        onLogin(user);
+      } else {
+        state.currentUser  = null;
+        state.userFamilyId = null;
+        state.activeListeners.forEach(unsub => unsub());
+        state.activeListeners.length = 0;
+        onLogout();
+      }
+    });
+  }).catch(console.error);
+}
+
+export async function realSignUp() {
+  setAuthError('');
+  const name   = document.getElementById('login-name')?.value?.trim()  || '';
+  const email  = document.getElementById('login-email')?.value?.trim() || '';
+  const pass   = document.getElementById('login-pass')?.value          || '';
+  const pass2  = document.getElementById('login-pass2')?.value         || '';
+  const phone  = document.getElementById('login-tel')?.value           || '';
+  const gender = document.getElementById('login-sexo')?.value          || '';
+
+  if (!name)           return setAuthError('Informe seu nome completo.');
+  if (!email)          return setAuthError('Informe um e-mail válido.');
+  if (pass.length < 6) return setAuthError('A senha precisa ter no mínimo 6 caracteres.');
+  if (pass !== pass2)  return setAuthError('As senhas não coincidem.');
+
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    const user = cred.user;
+    await setDoc(doc(db, 'users_profile', user.uid), {
+      name, email, phone, gender,
+      familyId:  user.uid,
+      createdAt: serverTimestamp(),
+      plan: 'free'
+    });
+    await sendEmailVerification(user);
+    showToast('Conta criada! Verifique seu e-mail 📧');
+  } catch (err) {
+    setAuthError(translateAuthError(err.code));
+  }
+}
+
+export async function realLogin() {
+  setAuthError('');
+  const email = document.getElementById('login-email')?.value?.trim() || '';
+  const pass  = document.getElementById('login-pass')?.value          || '';
+  if (!email) return setAuthError('Informe o e-mail.');
+  if (!pass)  return setAuthError('Informe a senha.');
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch (err) {
+    setAuthError(translateAuthError(err.code));
+  }
+}
+
+export function realLogout() {
+  return signOut(auth);
+}
+
+export function translateAuthError(code) {
+  const map = {
+    'auth/user-not-found':       'Usuário não encontrado.',
+    'auth/wrong-password':       'Senha incorreta.',
+    'auth/email-already-in-use': 'E-mail já cadastrado.',
+    'auth/invalid-email':        'E-mail inválido.',
+    'auth/weak-password':        'Senha muito fraca.',
+    'auth/too-many-requests':    'Muitas tentativas. Tente novamente em breve.',
+    'auth/invalid-credential':   'E-mail ou senha incorretos.',
+  };
+  return map[code] || 'Erro: ' + code;
+}
