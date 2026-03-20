@@ -1,42 +1,56 @@
-rules_version = '2';
+// ============================================================
+// CLARIM — Firestore Security Rules  v2.0
+// Modelo: familyId isolation (compatível com plano familiar)
+//
+// COMO PUBLICAR:
+//   console.firebase.google.com → Firestore Database → Regras
+//   Cole este conteúdo e clique em "Publicar"
+//
+// MODELO DE SEGURANÇA:
+//   • Cada usuário tem /users_profile/{uid} com campo "familyId".
+//   • Por padrão familyId = uid (usuário solo).
+//   • Plano familiar: basta que vários uids apontem para o MESMO
+//     familyId — sem alterar uma linha destas regras.
+//   • Nenhum usuário consegue ler ou gravar dados de outro familyId.
+// ============================================================
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ================================================
-    //  FUNÇÕES AUXILIARES
-    // ================================================
+    // ── Perfil de usuário ─────────────────────────────────────
+    // Cada uid acessa somente o próprio documento.
+    match /users_profile/{userId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
 
-    // Usuário está autenticado?
+    // ── Funções auxiliares ────────────────────────────────────
+
+    // Retorna true se o usuário está autenticado.
     function isAuth() {
       return request.auth != null;
     }
 
-    // O familyId do documento pertence ao usuário logado?
+    // Lê o familyId do perfil do usuário logado.
+    // Permite plano familiar: múltiplos uids → mesmo familyId.
+    // O Firestore cacheia o get() por requisição — sem custo extra.
+    function myFamilyId() {
+      return get(/databases/$(database)/documents/users_profile/$(request.auth.uid))
+               .data.familyId;
+    }
+
+    // Documento existente pertence ao familyId do usuário logado?
     function ownFamily() {
-      return isAuth()
-          && resource.data.familyId == request.auth.uid;
+      return isAuth() && resource.data.familyId == myFamilyId();
     }
 
-    // O familyId que está sendo gravado pertence ao usuário logado?
+    // Payload gravado declara o familyId correto?
     function writingOwnFamily() {
-      return isAuth()
-          && request.resource.data.familyId == request.auth.uid;
+      return isAuth() && request.resource.data.familyId == myFamilyId();
     }
 
-    // ================================================
-    //  PERFIL DO USUÁRIO (users_profile)
-    //  Apenas o próprio dono pode ler e escrever.
-    // ================================================
-    match /users_profile/{userId} {
-      allow read, write: if isAuth()
-                         && request.auth.uid == userId;
-    }
-
-    // ================================================
-    //  LANÇAMENTOS (despesas)
-    //  Lê e escreve apenas se familyId == auth.uid
-    // ================================================
+    // ── Lançamentos (despesas) ────────────────────────────────
     match /lancamentos/{docId} {
       allow read:   if ownFamily();
       allow create: if writingOwnFamily();
@@ -44,9 +58,7 @@ service cloud.firestore {
       allow delete: if ownFamily();
     }
 
-    // ================================================
-    //  RECEITAS
-    // ================================================
+    // ── Receitas ──────────────────────────────────────────────
     match /receitas/{docId} {
       allow read:   if ownFamily();
       allow create: if writingOwnFamily();
@@ -54,9 +66,7 @@ service cloud.firestore {
       allow delete: if ownFamily();
     }
 
-    // ================================================
-    //  CARTÕES
-    // ================================================
+    // ── Cartões de crédito ────────────────────────────────────
     match /cartoes/{docId} {
       allow read:   if ownFamily();
       allow create: if writingOwnFamily();
@@ -64,9 +74,7 @@ service cloud.firestore {
       allow delete: if ownFamily();
     }
 
-    // ================================================
-    //  CONTAS BANCÁRIAS
-    // ================================================
+    // ── Contas bancárias ──────────────────────────────────────
     match /contas/{docId} {
       allow read:   if ownFamily();
       allow create: if writingOwnFamily();
@@ -74,9 +82,7 @@ service cloud.firestore {
       allow delete: if ownFamily();
     }
 
-    // ================================================
-    //  CATEGORIAS
-    // ================================================
+    // ── Categorias ────────────────────────────────────────────
     match /categorias/{docId} {
       allow read:   if ownFamily();
       allow create: if writingOwnFamily();
@@ -84,13 +90,11 @@ service cloud.firestore {
       allow delete: if ownFamily();
     }
 
-    // ================================================
-    //  BLOQUEIO TOTAL — qualquer outra coleção
-    //  não listada acima é negada por padrão.
-    // ================================================
+    // ── Bloqueio total (qualquer outra coleção) ───────────────
+    // O Firestore nega por padrão, mas esta regra é explícita
+    // para evitar que futuras coleções sejam acidentalmente abertas.
     match /{document=**} {
       allow read, write: if false;
     }
-
   }
 }

@@ -6,6 +6,8 @@
 <title>Clarim — Controle Financeiro</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <!-- Aplica tema salvo antes do render (previne flash of unstyled content) -->
+  <script>if(localStorage.getItem('clarim-theme')==='light')document.documentElement.classList.add('theme-light')</script>
 </head>
 <body>
 
@@ -105,6 +107,7 @@
       <div class="sb-item" id="nav-categorias"><span class="ic">🏷️</span> Categorias</div>
       <div class="sb-sec">Análise</div>
       <div class="sb-item" id="nav-relatorios"><span class="ic">📈</span> Relatórios</div>
+      <div class="sb-item" id="nav-ia"><span class="ic">✨</span> Clarim IA</div>
       <div class="sb-item" id="nav-configuracoes"><span class="ic">⚙️</span> Config.</div>
     </nav>
     <div class="sb-user">
@@ -124,27 +127,70 @@
         <div class="mn-label" id="month-label">Março 2026</div>
         <button class="mn-btn" id="btn-next">›</button>
       </div>
+      <!-- ── Cashflow Header (Organizze-style) ── -->
+      <div class="dash-cashflow-header">
+        <div class="cf-block">
+          <div class="cf-label">📈 Receitas do Mês</div>
+          <div class="cf-value c-green" id="cf-rec">R$ —</div>
+          <div class="cf-sub" id="cf-rec-s">—</div>
+        </div>
+        <div class="cf-block">
+          <div class="cf-label">💸 Despesas do Mês</div>
+          <div class="cf-value c-red" id="cf-desp">R$ —</div>
+          <div class="cf-sub" id="cf-desp-s">—</div>
+        </div>
+        <div class="cf-block">
+          <div class="cf-label">💰 Saldo do Mês</div>
+          <div class="cf-value" id="cf-saldo">R$ —</div>
+          <div class="cf-sub" id="cf-saldo-s">—</div>
+        </div>
+        <!-- Barra de progresso: % de despesas sobre receitas -->
+        <div class="cf-progress-track">
+          <div class="cf-progress-fill" id="cf-progress"></div>
+        </div>
+      </div>
+
+      <!-- ── Gráfico de Gastos por Categoria ── -->
+      <div class="panel panel-charts">
+        <div class="panel-hd">
+          <div class="panel-title">🥧 Gastos por Categoria</div>
+          <span id="chart-mes-label" style="font-size:.74rem;color:var(--text3)"></span>
+        </div>
+        <div class="chart-body">
+          <div class="chart-donut-wrap">
+            <canvas id="chart-categorias"></canvas>
+          </div>
+          <div id="cat-list" class="chart-legend"></div>
+        </div>
+      </div>
+
       <div class="cards4">
         <div class="scard"><div class="sc-label">Receitas</div><div class="sc-value c-green" id="d-rec">-</div><div class="sc-sub" id="d-rec-s"></div></div>
-        <div class="scard"><div class="sc-label">Despesas</div><div class="sc-value c-red" id="d-desp">-</div><div class="sc-sub" id="d-desp-s"></div></div>
-        <div class="scard"><div class="sc-label">Saldo</div><div class="sc-value" id="d-saldo">-</div><div class="sc-sub" id="d-saldo-s"></div></div>
+        <div class="scard"><div class="sc-label">Despesas (Cash)</div><div class="sc-value c-red" id="d-desp">-</div><div class="sc-sub" id="d-desp-s"></div></div>
+        <div class="scard"><div class="sc-label">Saldo Cash</div><div class="sc-value" id="d-saldo">-</div><div class="sc-sub" id="d-saldo-s"></div></div>
         <div class="scard"><div class="sc-label">Em Atraso</div><div class="sc-value c-red" id="d-atraso">-</div><div class="sc-sub" id="d-atraso-s"></div></div>
       </div>
-      <div class="ai-panel">
-        <div class="ai-hd"><div class="ai-dot"></div><div class="ai-ttl">Assistente IA</div></div>
-        <div class="ai-chips" id="ai-chips"></div>
-        <div class="ai-msgs" id="ai-msgs"></div>
-        <div class="ai-row"><input class="ai-inp" id="ai-inp" placeholder="Pergunte sobre suas finanças..."><button class="ai-send" id="btn-ai">Enviar</button></div>
+      <!-- Saldos das Contas -->
+      <div class="panel">
+        <div class="panel-hd">
+          <div class="panel-title">🏦 Minhas Contas</div>
+          <div id="d-contas-total" style="font-family:var(--fd);font-weight:700;font-size:.92rem;color:var(--green)"></div>
+        </div>
+        <div id="dash-contas-list"></div>
       </div>
-      <div class="grid2">
-        <div class="panel">
-          <div class="panel-hd"><div class="panel-title">Próximos Vencimentos <span style="font-size:.72rem;color:var(--text3);font-weight:400;font-family:var(--f)">· clique para editar</span></div></div>
-          <div id="prox-list"></div>
+
+      <!-- Faturas em Aberto -->
+      <div class="panel" style="margin-bottom:1.5rem">
+        <div class="panel-hd">
+          <div class="panel-title">💳 Faturas em Aberto</div>
+          <div class="sc-value c-red" id="d-faturas" style="font-size:1rem;font-weight:700">-</div>
         </div>
-        <div class="panel">
-          <div class="panel-hd"><div class="panel-title">Gastos por Categoria</div></div>
-          <div id="cat-list"></div>
-        </div>
+        <div id="faturas-abertas-list"></div>
+        <div style="font-size:.7rem;color:var(--text3);padding:.4rem .5rem" id="d-faturas-s"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-hd"><div class="panel-title">Próximos Vencimentos <span style="font-size:.72rem;color:var(--text3);font-weight:400;font-family:var(--f)">· clique para editar</span></div></div>
+        <div id="prox-list"></div>
       </div>
     </div>
 
@@ -154,25 +200,45 @@
       <div class="pg-sub">Débito, dinheiro e parcelamentos · clique nas colunas para ordenar</div>
       <div class="toolbar">
         <input class="search-box" id="desp-search" placeholder="🔍 Buscar...">
-        <select class="fsel" id="desp-mes"><option value="">Todos os meses</option></select>
         <select class="fsel" id="desp-cat"><option value="">Todas categorias</option></select>
-        <select class="fsel" id="desp-status"><option value="">Todos status</option><option value="pago">Pagos</option><option value="pendente">Pendentes</option><option value="atrasado">Atrasados</option></select>
+        <select class="fsel" id="desp-conta"><option value="">Todas as contas</option></select>
+        <select class="fsel" id="desp-status"><option value="">Todos status</option><option value="pago">✅ Pagos</option><option value="avencer">⏳ À Vencer</option><option value="atrasado">❌ Atrasados</option></select>
         <button class="btn-add" id="btn-nova-desp">+ Nova Despesa</button>
         <button class="btn-imp-exp" id="btn-import-desp">⬆ Importar</button>
         <button class="btn-imp-exp" id="btn-export-desp">⬇ Exportar</button>
+        <button class="btn-danger" id="btn-excluir-sel" style="display:none">🗑 Excluir Selecionados</button>
         <input type="file" id="file-import-desp" accept=".xlsx,.xls,.csv" style="display:none">
       </div>
+      <!-- ── Navegação de mês / período personalizado ── -->
+      <div class="desp-nav-strip">
+        <div class="desp-month-nav" id="desp-month-nav">
+          <button class="mn-btn" id="desp-prev-mes">‹</button>
+          <span class="mn-label" id="desp-mes-label">Carregando...</span>
+          <button class="mn-btn" id="desp-next-mes">›</button>
+        </div>
+        <div class="periodo-bar" id="periodo-bar" style="display:none">
+          <input type="date" class="date-inp" id="desp-inicio">
+          <span class="periodo-sep">até</span>
+          <input type="date" class="date-inp" id="desp-fim">
+        </div>
+        <button class="btn-periodo-toggle" id="btn-periodo-toggle">📅 Período</button>
+      </div>
+
+      <div class="tbl-scroll-x">
       <div class="tbl-wrap">
-        <div class="tbl-head" id="desp-head" style="grid-template-columns:90px 1fr 110px 85px 120px 130px">
-          <div class="th" data-col="data" data-tbl="desp">Data <span class="sort-arrow" id="sa-desp-data"></span></div>
+        <div class="tbl-head desp-grid" id="desp-head">
+          <div class="th" style="justify-content:center"><input type="checkbox" id="desp-master-cb" class="row-cb" title="Selecionar todos"></div>
+          <div class="th" data-col="data"      data-tbl="desp">Vencimento <span class="sort-arrow" id="sa-desp-data"></span></div>
+          <div class="th" data-col="pagamento" data-tbl="desp">Pgto <span class="sort-arrow" id="sa-desp-pagamento"></span></div>
           <div class="th" data-col="descricao" data-tbl="desp">Descrição <span class="sort-arrow" id="sa-desp-descricao"></span></div>
           <div class="th" data-col="categoria" data-tbl="desp">Categoria <span class="sort-arrow" id="sa-desp-categoria"></span></div>
-          <div class="th" data-col="valor" data-tbl="desp" style="justify-content:flex-end">Valor <span class="sort-arrow" id="sa-desp-valor"></span></div>
-          <div class="th" data-col="status" data-tbl="desp" style="justify-content:center">Status <span class="sort-arrow" id="sa-desp-status"></span></div>
+          <div class="th" data-col="valor"     data-tbl="desp" style="justify-content:flex-end">Valor <span class="sort-arrow" id="sa-desp-valor"></span></div>
+          <div class="th" data-col="status"    data-tbl="desp" style="justify-content:center">Status <span class="sort-arrow" id="sa-desp-status"></span></div>
           <div style="text-align:right;font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.8px">Ações</div>
         </div>
         <div id="desp-body"></div>
         <div class="pag"><div class="pag-info" id="desp-pag-info"></div><div class="pag-btns" id="desp-pag-btns"></div></div>
+      </div>
       </div>
     </div>
 
@@ -183,6 +249,7 @@
       <div class="toolbar">
         <input class="search-box" id="rec-search" placeholder="🔍 Buscar...">
         <select class="fsel" id="rec-mes"><option value="">Todos os meses</option></select>
+        <select class="fsel" id="rec-conta"><option value="">Todas as contas</option></select>
         <select class="fsel" id="rec-cat-f"><option value="">Todas categorias</option></select>
         <select class="fsel" id="rec-status-f"><option value="">Todos status</option><option value="recebido">Recebidos</option><option value="previsto">Previstos</option></select>
         <button class="btn-add" id="btn-nova-rec">+ Nova Receita</button>
@@ -228,8 +295,21 @@
     <!-- CATEGORIAS -->
     <div class="page" id="page-categorias">
       <div class="pg-title">Categorias</div><div class="pg-sub">Gerencie suas categorias</div>
-      <div class="toolbar"><button class="btn-add" id="btn-nova-cat">+ Nova Categoria</button></div>
+      <div class="toolbar">
+        <button class="btn-add" id="btn-nova-cat">+ Nova Categoria</button>
+        <div class="cat-search-wrap">
+          <span class="cat-search-icon">🔍</span>
+          <input class="cat-search-input" type="text" id="search-cat"
+                 placeholder="Buscar categoria..." autocomplete="off">
+        </div>
+        <div class="cat-filters" role="group" aria-label="Filtrar por tipo">
+          <button class="cat-filter-btn active" data-tipo="todos">Todos</button>
+          <button class="cat-filter-btn" data-tipo="despesa">Despesas</button>
+          <button class="cat-filter-btn" data-tipo="receita">Receitas</button>
+        </div>
+      </div>
       <div id="cats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem"></div>
+      <div id="cats-empty-state" style="display:none"></div>
     </div>
     <!-- RELATÓRIOS -->
     <div class="page" id="page-relatorios">
@@ -238,22 +318,88 @@
       <div id="relat-content"></div>
     </div>
 
+    <!-- CLARIM IA -->
+    <div class="page" id="page-ia">
+      <div class="ai-page-wrap">
+        <!-- Hero -->
+        <div class="ai-page-hero">
+          <div class="ai-page-glow"></div>
+          <div class="ai-page-icon">✨</div>
+          <div class="ai-page-title">Clarim IA</div>
+          <div class="ai-page-sub">Seu assistente financeiro inteligente</div>
+        </div>
+        <!-- Suggestion chips -->
+        <div class="ai-page-chips" id="ai-chips"></div>
+        <!-- Message area -->
+        <div class="ai-page-body">
+          <div class="ai-page-empty" id="ai-empty">
+            <span class="ai-empty-icon">💬</span>
+            <span>Faça uma pergunta para começar</span>
+            <span class="ai-empty-hint">Ou escolha uma sugestão acima</span>
+          </div>
+          <div id="ai-msgs"></div>
+        </div>
+        <!-- Input bar -->
+        <div class="ai-page-input-bar">
+          <input class="ai-page-input" id="ai-inp" placeholder="Pergunte sobre suas finanças..." autocomplete="off">
+          <button class="ai-page-send" id="btn-ai">Enviar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- CONFIG -->
     <div class="page" id="page-configuracoes">
       <div class="pg-title">Configurações</div>
-      <div class="pg-sub">Conta e usuários</div>
+      <div class="pg-sub">Conta, aparência e usuários</div>
+
+      <!-- Aparência -->
+      <div class="panel" style="max-width:480px">
+        <div class="panel-hd"><div class="panel-title">🎨 Aparência</div></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:.8rem;background:var(--bg3);border-radius:12px">
+          <div>
+            <div style="font-size:.875rem;font-weight:500">Modo Claro</div>
+            <div style="font-size:.72rem;color:var(--text3);margin-top:2px">Estilo clean — fundo branco, sombras suaves</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="theme-toggle">
+            <span class="toggle-thumb"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Usuários -->
       <div class="panel" style="max-width:480px">
         <div class="panel-hd"><div class="panel-title">Usuários</div></div>
         <div style="display:flex;flex-direction:column;gap:.9rem">
           <div style="display:flex;align-items:center;gap:10px;padding:.75rem;background:var(--bg3);border-radius:10px">
             <div style="width:34px;height:34px;border-radius:50%;background:rgba(79,255,176,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--green)">FB</div>
-            <div><div style="font-size:.875rem;font-weight:500">Fábio Bellotti</div><div style="font-size:.72rem;color:var(--text3)"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="355354575c5a75565954475c581b565a581b5747">[email&#160;protected]</a> · Administrador</div></div>
+            <div><div style="font-size:.875rem;font-weight:500">Fábio Bellotti</div><div style="font-size:.72rem;color:var(--text3)">fabio@clarim.app · Administrador</div></div>
             <span class="badge b-pago" style="margin-left:auto">Ativo</span>
           </div>
           <div style="display:flex;align-items:center;gap:10px;padding:.75rem;background:var(--bg3);border-radius:10px">
             <div style="width:34px;height:34px;border-radius:50%;background:rgba(96,165,250,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--blue)">MH</div>
-            <div><div style="font-size:.875rem;font-weight:500">Mônica Helena</div><div style="font-size:.72rem;color:var(--text3)"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3e535150575d5f7e5d525f4c5753105d5153105c4c">[email&#160;protected]</a> · Membro</div></div>
+            <div><div style="font-size:.875rem;font-weight:500">Mônica Helena</div><div style="font-size:.72rem;color:var(--text3)">monica@clarim.app · Membro</div></div>
             <span class="badge b-previsto" style="margin-left:auto">Ativo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ferramentas de Dados -->
+      <div class="panel" style="max-width:480px">
+        <div class="panel-hd"><div class="panel-title">🔧 Ferramentas de Dados</div></div>
+        <div style="display:flex;flex-direction:column;gap:.85rem">
+          <div style="padding:.85rem;background:var(--bg3);border-radius:12px">
+            <div style="font-size:.875rem;font-weight:500;margin-bottom:.25rem">Recuperar Integridade</div>
+            <div style="font-size:.72rem;color:var(--text3);margin-bottom:.75rem;line-height:1.6">
+              Verifica se os nomes de categoria nos lançamentos estão sincronizados com as categorias cadastradas.
+              Útil após renomear uma categoria escolhendo "Preservar Histórico".
+            </div>
+            <div id="integridade-preview" style="display:none;font-size:.75rem;color:var(--text2);background:var(--bg4);border-radius:8px;padding:.6rem .8rem;margin-bottom:.7rem;line-height:1.7"></div>
+            <button class="btn-save" id="btn-integridade"
+                    style="max-width:220px;padding:.55rem 1.1rem;font-size:.82rem"
+                    onclick="window.verificarIntegridade()">
+              🔍 Verificar &amp; Sincronizar
+            </button>
           </div>
         </div>
       </div>
@@ -277,10 +423,7 @@
     <div class="fr2">
       <div class="fr"><label>Categoria</label>
         <select id="f-cat">
-          <option>Contas de Casa</option><option>Moradia</option><option>Transporte</option><option>Empréstimo</option>
-          <option>Alimentação</option><option>Educação</option><option>Saúde</option><option>Telecomunicações</option>
-          <option>Casa</option><option>Lazer</option><option>Religião</option><option>Cuidados Pessoais</option>
-          <option>Vestuário</option><option>Seguro</option><option>Eletrônicos</option><option>Viagem</option><option>Outros</option>
+          <!-- Populado dinamicamente por _populateFCat() em despesas.js -->
         </select>
       </div>
       <div class="fr"><label>Conta</label>
@@ -298,12 +441,24 @@
     <!-- ÚNICO -->
     <div id="wrap-unico">
       <div class="fr2">
-        <div class="fr"><label>Valor (R$)</label><input type="number" id="f-valor" placeholder="0,00" step="0.01"></div>
+        <div class="fr"><label>Valor Original (R$)</label><input type="number" id="f-valor" placeholder="0,00" step="0.01"></div>
         <div class="fr"><label>Data Vencimento</label><input type="date" id="f-data"></div>
+      </div>
+      <div class="fr2">
+        <div class="fr"><label>Ajuste (Juros/Desconto)</label><input type="number" id="f-ajuste" placeholder="0,00" step="0.01"></div>
+        <div class="fr"><label>Total (R$)</label><input type="number" id="f-valortotal" placeholder="calculado" step="0.01" readonly style="background:var(--bg3);cursor:default;opacity:.8"></div>
       </div>
       <div class="fr2">
         <div class="fr"><label>Status</label><select id="f-status"><option value="pendente">Pendente</option><option value="pago">Pago</option></select></div>
         <div class="fr" id="fr-datapag" style="display:none"><label>Data Pagamento</label><input type="date" id="f-datapag"></div>
+      </div>
+      <div class="fr" id="fr-obs" style="display:none"><label>Observações</label><textarea id="f-obs" rows="2" style="resize:vertical"></textarea></div>
+      <!-- Edição em massa — visível apenas no modo edição -->
+      <div id="fr-bulk-cat" style="display:none;margin-top:.5rem">
+        <label style="display:flex;align-items:center;gap:.55rem;cursor:pointer;font-size:.82rem;color:var(--text2)">
+          <input type="checkbox" id="bulk-apply-cat" style="width:auto;accent-color:var(--green)">
+          Aplicar esta categoria a <strong id="bulk-cat-count" style="color:var(--text)">0</strong>&nbsp;outro(s) lançamento(s) com a mesma descrição
+        </label>
       </div>
     </div>
     <!-- FIXO -->
@@ -346,10 +501,10 @@
       <div class="fr"><label>Data</label><input type="date" id="rec-data"></div>
     </div>
     <div class="fr2">
-      <div class="fr"><label>Categoria</label><select id="rec-cat"><option>Salário</option><option>Freelance</option><option>Aluguel</option><option>Investimento</option><option>Bônus</option><option>Outros</option></select></div>
+      <div class="fr"><label>Categoria</label><select id="rec-cat"><!-- Populado dinamicamente por _populateRecCat() em receitas.js --></select></div>
       <div class="fr"><label>Status</label><select id="rec-status"><option value="recebido">Recebido</option><option value="previsto">Previsto</option></select></div>
     </div>
-    <div class="fr">
+    <div class="fr" id="rec-rec-wrap">
       <label>Recorrência</label>
       <div class="rec-opts" id="rec-rec-opts">
         <div class="rec-opt active" data-rec="unico">Uma vez</div>
@@ -398,7 +553,7 @@
         <input type="number" id="b-ajuste" placeholder="0,00" step="0.01">
         <div class="ajuste-info">+ juros por atraso · − desconto por antecipação</div>
       </div>
-      <div class="fr"><label>Valor final pago</label><input type="number" id="b-valor-final" step="0.01" readonly style="opacity:.65"></div>
+      <div class="fr"><label>Valor pago (R$)</label><input type="number" id="b-valor-final" step="0.01" placeholder="0,00"></div>
     </div>
     <div class="fr"><label>Conta utilizada</label><select id="b-conta"></select></div>
     <div class="fr"><label>Observação (opcional)</label><input type="text" id="b-obs" placeholder="Ex: Pago com desconto..."></div>
@@ -426,10 +581,47 @@
 <div class="modal-overlay" id="modal-conta">
   <div class="modal" style="max-width:400px">
     <div class="modal-title" id="conta-modal-title">Nova Conta</div>
-    <div class="fr"><label>Nome</label><input type="text" id="cnt-nome" placeholder="Ex: Nubank, Sicoob..."></div>
-    <div class="fr"><label>Tipo</label><select id="cnt-tipo"><option value="corrente">Conta Corrente</option><option value="digital">Conta Digital</option><option value="poupanca">Poupança</option><option value="carteira">Carteira/Dinheiro</option><option value="investimento">Investimento</option></select></div>
+    <div class="fr"><label>Nome</label><input type="text" id="cnt-nome" placeholder="Ex: Conta Corrente, Poupança..."></div>
+    <div class="fr2">
+      <div class="fr"><label>Banco / Instituição</label>
+        <select id="cnt-banco">
+          <option value="">— Selecione —</option>
+          <option value="nubank">Nubank</option>
+          <option value="itau">Itaú</option>
+          <option value="santander">Santander</option>
+          <option value="caixa">Caixa Econômica</option>
+          <option value="bradesco">Bradesco</option>
+          <option value="inter">Banco Inter</option>
+          <option value="sicoob">Sicoob</option>
+          <option value="btg">BTG Pactual</option>
+          <option value="xp">XP Investimentos</option>
+          <option value="picpay">PicPay</option>
+          <option value="outros">Outros</option>
+        </select>
+      </div>
+      <div class="fr"><label>Tipo</label><select id="cnt-tipo"><option value="corrente">Conta Corrente</option><option value="digital">Conta Digital</option><option value="poupanca">Poupança</option><option value="carteira">Carteira/Dinheiro</option><option value="investimento">Investimento</option></select></div>
+    </div>
     <div class="fr"><label>Saldo inicial (R$)</label><input type="number" id="cnt-saldo" placeholder="0,00" step="0.01"></div>
     <div class="modal-btns"><button class="btn-cancel" id="btn-cancel-conta">Cancelar</button><button class="btn-save" id="btn-save-conta">Salvar</button></div>
+  </div>
+</div>
+<!-- MODAL AJUSTE DE SALDO -->
+<div class="modal-overlay" id="modal-ajuste-saldo">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title">Ajuste de Saldo</div>
+    <div class="baixa-box" id="ajuste-info-box"></div>
+    <div class="fr">
+      <label>Novo Saldo Real (R$)</label>
+      <input type="number" id="ajuste-novo-saldo" step="0.01" placeholder="0,00">
+    </div>
+    <div class="fr" style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">
+      <input type="checkbox" id="ajuste-criar-lanc" checked style="width:15px;height:15px;accent-color:var(--green);cursor:pointer;flex-shrink:0">
+      <label for="ajuste-criar-lanc" style="font-size:.82rem;color:var(--text2);cursor:pointer;line-height:1.4">Registrar lançamento automático de ajuste</label>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-cancel-ajuste">Cancelar</button>
+      <button class="btn-save" id="btn-save-ajuste">Confirmar Ajuste</button>
+    </div>
   </div>
 </div>
 <!-- MODAL CATEGORIA -->
@@ -437,7 +629,17 @@
   <div class="modal" style="max-width:420px">
     <div class="modal-title" id="cat-modal-title">Nova Categoria</div>
     <div class="fr"><label>Nome</label><input type="text" id="cat-nome" placeholder="Ex: Pet, Academia..."></div>
-    <div class="fr2"><div class="fr"><label>Ícone (emoji)</label><input type="text" id="cat-icon" placeholder="🐶" maxlength="4"></div><div class="fr"><label>Tipo</label><select id="cat-tipo"><option value="despesa">Despesa</option><option value="receita">Receita</option><option value="ambos">Ambos</option></select></div></div>
+    <div class="fr2">
+      <div class="fr">
+        <label>Ícone</label>
+        <div style="display:flex;align-items:center;gap:.6rem;margin-top:.3rem">
+          <span id="cat-icon-preview" style="font-size:2rem;line-height:1">🏷️</span>
+          <span style="font-size:.75rem;color:var(--text3)">Selecione abaixo</span>
+        </div>
+      </div>
+      <div class="fr"><label>Tipo</label><select id="cat-tipo"><option value="despesa">Despesa</option><option value="receita">Receita</option><option value="ambos">Ambos</option></select></div>
+    </div>
+    <div class="fr"><label>Biblioteca de ícones</label><div class="icon-picker-grid" id="cat-icon-grid"></div></div>
     <div class="fr"><label>Cor</label>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem" id="cat-cores">
         <div class="cor-opt" data-cor="#4FFFB0" style="width:26px;height:26px;border-radius:50%;background:#4FFFB0;cursor:pointer;border:2px solid white"></div>
@@ -449,6 +651,18 @@
         <div class="cor-opt" data-cor="#34D399" style="width:26px;height:26px;border-radius:50%;background:#34D399;cursor:pointer;border:2px solid transparent"></div>
         <div class="cor-opt" data-cor="#F97316" style="width:26px;height:26px;border-radius:50%;background:#F97316;cursor:pointer;border:2px solid transparent"></div>
         <div class="cor-opt" data-cor="#94A3B8" style="width:26px;height:26px;border-radius:50%;background:#94A3B8;cursor:pointer;border:2px solid transparent"></div>
+      </div>
+    </div>
+    <div class="fr budget-toggle-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <label style="margin-bottom:0">Limite mensal de gastos</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="cat-limite-ativo">
+          <span class="toggle-thumb"></span>
+        </label>
+      </div>
+      <div id="cat-limite-wrap" style="display:none;margin-top:.65rem">
+        <input type="number" id="cat-limite-valor" placeholder="Ex: 500,00" step="0.01">
       </div>
     </div>
     <div class="modal-btns"><button class="btn-cancel" id="btn-cancel-cat">Cancelar</button><button class="btn-save" id="btn-save-cat">Salvar</button></div>
@@ -477,12 +691,98 @@
     </div>
   </div>
 </div>
+<!-- MODAL CONFIRMAÇÃO DE RENOMEAÇÃO DE CATEGORIA -->
+<div class="modal-overlay" id="modal-rename-cat">
+  <div class="modal" style="max-width:470px">
+    <div class="modal-title">✏️ Renomear Categoria</div>
+
+    <!-- Mensagem de alerta com os nomes -->
+    <div id="rename-alert"
+         style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);
+                border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem;
+                font-size:.86rem;line-height:1.65;color:var(--text)">
+    </div>
+
+    <!-- Contagem de impacto -->
+    <div id="rename-impact"
+         style="font-size:.8rem;color:var(--text2);margin-bottom:1.1rem;padding-left:.2rem">
+    </div>
+
+    <!-- Opções de escolha -->
+    <div style="display:flex;flex-direction:column;gap:.65rem;margin-bottom:1.3rem">
+
+      <label class="rename-opt rename-opt-active" id="rename-opt-a">
+        <input type="radio" name="rename-choice" value="a" checked
+               style="width:auto;margin-top:2px;flex-shrink:0;accent-color:var(--green)">
+        <div>
+          <div style="font-weight:600;font-size:.86rem;margin-bottom:.25rem">
+            ⭐ Opção A &mdash; Recomendada
+          </div>
+          <div id="rename-opt-a-desc" style="font-size:.77rem;color:var(--text2);line-height:1.5"></div>
+        </div>
+      </label>
+
+      <label class="rename-opt" id="rename-opt-b">
+        <input type="radio" name="rename-choice" value="b"
+               style="width:auto;margin-top:2px;flex-shrink:0;accent-color:var(--green)">
+        <div>
+          <div style="font-weight:600;font-size:.86rem;margin-bottom:.25rem">
+            📜 Opção B &mdash; Preservar Histórico
+          </div>
+          <div id="rename-opt-b-desc" style="font-size:.77rem;color:var(--text2);line-height:1.5"></div>
+        </div>
+      </label>
+
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-cancel-rename">Cancelar</button>
+      <button class="btn-save"   id="btn-confirm-rename">✓ Confirmar Mudança</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL IMPORT RESULT -->
 <div class="modal-overlay" id="modal-import-result">
   <div class="modal" style="max-width:440px">
     <div class="modal-title">Resultado da Importação</div>
     <div id="import-result-body"></div>
     <div class="modal-btns"><button class="btn-save" id="btn-ok-import" style="max-width:150px">OK</button></div>
+  </div>
+</div>
+
+<!-- MODAL REVISÃO DE IMPORTAÇÃO -->
+<div class="modal-overlay" id="modal-import-review">
+  <div class="modal imp-modal">
+    <div class="modal-title">📋 Revisão de Importação</div>
+    <!-- Resumo de ações detectadas -->
+    <div id="imp-summary" style="display:flex;gap:.45rem;align-items:center;flex-wrap:wrap;margin-bottom:.85rem"></div>
+    <!-- Toolbar de ações em lote -->
+    <div style="display:flex;gap:.5rem;margin-bottom:.55rem;flex-wrap:wrap">
+      <button class="btn-imp-exp" id="imp-sel-all">☑ Selecionar Todos</button>
+      <button class="btn-imp-exp" id="imp-desel-dup">⚠️ Desmarcar Duplicados</button>
+    </div>
+    <!-- Cabeçalho da tabela -->
+    <div class="imp-head">
+      <div></div>
+      <div>Data</div>
+      <div>Descrição</div>
+      <div style="text-align:right">Valor</div>
+      <div>Ação Sugerida</div>
+      <div>Categoria</div>
+      <div>Conta</div>
+    </div>
+    <!-- Corpo da tabela (renderizado via JS) -->
+    <div id="imp-review-body" style="max-height:350px;overflow-y:auto;border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px"></div>
+    <!-- Legenda -->
+    <div style="font-size:.7rem;color:var(--text3);padding:.55rem 0 .1rem;line-height:1.75">
+      ✅ <b style="color:var(--text2)">Dar Baixa</b> — marca lançamento pendente existente como pago. &nbsp;
+      ⚠️ <b style="color:var(--text2)">Duplicado</b> — desmarcado por padrão, marque apenas se quiser importar mesmo assim.
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-cancel-import-review">Cancelar</button>
+      <button class="btn-save" id="btn-confirm-import">✓ Confirmar Importação</button>
+    </div>
   </div>
 </div>
 
@@ -532,6 +832,42 @@
     <div id="mcd-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:.4rem"></div>
   </div>
 </div>
+<!-- MODAL PAGAR FATURA -->
+<div class="modal-overlay" id="modal-pagar-fatura">
+  <div class="modal">
+    <div class="modal-title">Pagar Fatura do Cartão</div>
+    <div class="baixa-box" id="pf-box"></div>
+    <div class="fr"><label>Data do Pagamento</label><input type="date" id="pf-data"></div>
+    <div class="fr"><label>Débitar da Conta</label><select id="pf-conta"></select></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-cancel-pagar-fatura">Cancelar</button>
+      <button class="btn-save" id="btn-save-pagar-fatura">✓ Confirmar Pagamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RECEBIMENTO -->
+<div class="modal-overlay" id="modal-recebimento">
+  <div class="modal">
+    <div class="modal-title">Confirmar Recebimento</div>
+    <div class="baixa-box" id="receb-box"></div>
+    <div class="fr"><label>Data do Recebimento <span style="color:var(--text3);font-size:.7rem">(não altera a data prevista)</span></label><input type="date" id="receb-data"></div>
+    <div class="fr2">
+      <div class="fr">
+        <label>Ajuste (R$)</label>
+        <input type="number" id="receb-ajuste" placeholder="0,00" step="0.01">
+        <div class="ajuste-info">+ bônus · − taxa/desconto</div>
+      </div>
+      <div class="fr"><label>Valor recebido (R$)</label><input type="number" id="receb-valor-final" step="0.01" placeholder="0,00"></div>
+    </div>
+    <div class="fr"><label>Conta de Destino</label><select id="receb-conta"></select></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-cancel-recebimento">Cancelar</button>
+      <button class="btn-save" id="btn-save-recebimento">✓ Confirmar Recebimento</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -597,6 +933,7 @@
 </script>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

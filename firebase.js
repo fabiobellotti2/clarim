@@ -3,7 +3,7 @@
 // Configuração Firebase, estado global, CRUD e autenticação
 // ============================================================
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -13,7 +13,7 @@ import {
   sendEmailVerification,
   browserLocalPersistence,
   setPersistence
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import {
   getFirestore,
   collection,
@@ -25,8 +25,10 @@ import {
   where,
   doc,
   setDoc,
+  runTransaction,
+  writeBatch,
   serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 import { showToast, setAuthError } from './utils.js';
 
@@ -41,7 +43,7 @@ const firebaseConfig = {
   measurementId: "G-EKKNN0JJVE"
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db   = getFirestore(app);
 
@@ -67,12 +69,14 @@ export async function fbAdd(colName, data) {
     const ref = await addDoc(collection(db, colName), {
       ...data,
       familyId:  state.userFamilyId,
-      updatedAt: serverTimestamp()
+      createdBy: state.currentUser?.uid ?? null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
     return ref.id;
   } catch (e) {
-    console.error('Erro ao salvar:', e);
-    showToast('Erro ao salvar. Verifique o console.', 'err');
+    console.error(`[Clarim] fbAdd('${colName}') falhou:`, e);
+    showToast('Ops! Não conseguimos salvar. Verifique sua conexão ou tente novamente.', 'err');
     return null;
   }
 }
@@ -83,11 +87,12 @@ export async function fbUpdate(colName, docId, data) {
     await updateDoc(doc(db, colName, docId), {
       ...data,
       familyId:  state.userFamilyId,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
   } catch (e) {
-    console.error('Erro ao atualizar:', e);
-    showToast('Erro ao atualizar.', 'err');
+    console.error(`[Clarim] fbUpdate('${colName}', '${docId}') falhou:`, e);
+    showToast('Ops! Não conseguimos atualizar. Verifique sua conexão ou tente novamente.', 'err');
+    throw e; // re-throw para permitir rollback otimista no chamador
   }
 }
 
@@ -96,8 +101,57 @@ export async function fbDelete(colName, docId) {
   try {
     await deleteDoc(doc(db, colName, docId));
   } catch (e) {
-    console.error('Erro ao deletar:', e);
-    showToast('Erro ao deletar.', 'err');
+    console.error(`[Clarim] fbDelete('${colName}', '${docId}') falhou:`, e);
+    showToast('Ops! Não conseguimos remover. Verifique sua conexão ou tente novamente.', 'err');
+  }
+}
+
+/**
+ * Atualização em lote: aplica o mesmo payload a vários documentos numa única
+ * operação de writeBatch (máximo 500 docs por chamada — suficiente para o uso
+ * doméstico do Clarim).
+ *
+ * @param {string} colName  — coleção Firestore
+ * @param {Array<{id: string, data: object}>} updates — pares {id, data}
+ */
+export async function fbBatch(colName, updates) {
+  if (!state.userFamilyId || !updates.length) return;
+  try {
+    const batch = writeBatch(db);
+    updates.forEach(({ id, data }) => batch.update(doc(db, colName, id), data));
+    await batch.commit();
+  } catch (e) {
+    console.error(`[Clarim] fbBatch('${colName}') falhou:`, e);
+    showToast('Ops! Não conseguimos salvar em lote. Verifique sua conexão.', 'err');
+    throw e;   // re-throw para que o chamador saiba que falhou
+  }
+}
+
+/**
+ * Transação atômica: lê o documento, aplica updateFn(data) → { campos novos },
+ * e escreve o resultado num único lock do Firestore.
+ * Garante integridade mesmo com múltiplos usuários escrevendo simultaneamente.
+ *
+ * @param {string}   colName  — coleção Firestore
+ * @param {string}   docId    — id do documento
+ * @param {Function} updateFn — recebe data atual, retorna objeto com campos a atualizar
+ */
+export async function fbTransact(colName, docId, updateFn) {
+  if (!state.userFamilyId) return;
+  try {
+    await runTransaction(db, async (txn) => {
+      const ref  = doc(db, colName, docId);
+      const snap = await txn.get(ref);
+      if (!snap.exists()) throw new Error(`Documento não encontrado: ${colName}/${docId}`);
+      const patch = updateFn(snap.data());
+      if (patch && typeof patch === 'object') {
+        txn.update(ref, { ...patch, familyId: state.userFamilyId, updatedAt: serverTimestamp() });
+      }
+    });
+  } catch (e) {
+    console.error(`[Clarim] fbTransact('${colName}', '${docId}') falhou:`, e);
+    showToast('Ops! Não conseguimos salvar. Verifique sua conexão ou tente novamente.', 'err');
+    throw e; // re-throw para rollback otimista
   }
 }
 
@@ -121,7 +175,8 @@ export function loadAllData() {
     );
     const unsub = onSnapshot(q, snap => {
       state[key] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      document.dispatchEvent(new CustomEvent(event));
+      const changes = snap.docChanges().map(c => ({ type: c.type, id: c.doc.id }));
+      document.dispatchEvent(new CustomEvent(event, { detail: { changes } }));
     }, err => console.error(`Erro ao carregar ${name}:`, err));
     state.activeListeners.push(unsub);
   });

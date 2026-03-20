@@ -52,6 +52,30 @@ export const MONTHS = [
   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
 ];
 
+// ── Banco / Instituição ───────────────────────────────────────
+export const BANK_META = {
+  nubank:    { label: 'Nubank',        color: '#820AD1', init: 'Nu' },
+  itau:      { label: 'Itaú',          color: '#FF6200', init: 'Iᴛ' },
+  santander: { label: 'Santander',     color: '#EC0000', init: 'Sa' },
+  caixa:     { label: 'Caixa',         color: '#006CB7', init: 'CX' },
+  bradesco:  { label: 'Bradesco',      color: '#CC092F', init: 'Br' },
+  inter:     { label: 'Inter',         color: '#FF6B35', init: 'In' },
+  sicoob:    { label: 'Sicoob',        color: '#007A3E', init: 'Si' },
+  btg:       { label: 'BTG',           color: '#002050', init: 'BT' },
+  xp:        { label: 'XP',            color: '#1C1C1E', init: 'XP' },
+  picpay:    { label: 'PicPay',        color: '#11C76F', init: 'PP' },
+  outros:    { label: 'Outros',        color: '#64748b', init: '$$' },
+};
+
+/** Renderiza um círculo colorido com as iniciais do banco. */
+export function bankDot(banco) {
+  const m = BANK_META[banco];
+  const color    = m?.color    || '#64748b';
+  const initials = m?.init     || '🏦';
+  const label    = m?.label    || 'Conta';
+  return `<div class="bank-dot" style="background:${color}" title="${label}">${initials}</div>`;
+}
+
 export function converterValorBR(valor) {
   if (valor === null || valor === undefined) return 0;
   if (typeof valor === 'number') return isNaN(valor) ? 0 : valor;
